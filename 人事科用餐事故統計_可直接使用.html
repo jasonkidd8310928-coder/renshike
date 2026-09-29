@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人事科用餐事故統計</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:15px;background:#f2f4f7;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:#222}
+.container{max-width:650px;margin:auto}
+.card{background:white;border-radius:15px;padding:18px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+h1{text-align:center;font-size:24px;margin:5px 0 18px}
+h2{font-size:18px;margin:5px 0 15px}
+.setting{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.setting label{font-size:14px;font-weight:bold}
+input,select{width:100%;margin-top:5px;padding:11px;border:1px solid #ccc;border-radius:8px;font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{text-align:center;padding:12px 5px;background:#f1f3f5;border-radius:10px}
+.stat-number{font-size:24px;font-weight:bold}
+.stat-title{font-size:13px;margin-top:3px}
+.person{border:1px solid #ddd;border-radius:10px;margin-bottom:9px;padding:10px}
+.person-name{font-size:17px;font-weight:bold;margin-bottom:8px}
+.buttons{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.buttons button{border:1px solid #ccc;background:#fff;padding:8px 2px;border-radius:7px;font-size:13px;cursor:pointer}
+.buttons button.active{background:#333;color:white;border-color:#333}
+.search{margin-bottom:12px}
+textarea{width:100%;min-height:280px;resize:vertical;padding:12px;border:1px solid #ccc;border-radius:8px;font-size:15px;line-height:1.7;font-family:"Microsoft JhengHei",sans-serif}
+.main-button{width:100%;border:none;border-radius:9px;padding:13px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:8px}
+.copy{background:#333;color:white}.reset{background:#eee;color:#222}
+.result-title{font-size:17px;font-weight:bold;margin-bottom:8px}
+@media(max-width:480px){.setting{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}.buttons{grid-template-columns:repeat(3,1fr)}.buttons button{padding:10px 3px}}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="card">
+<h1>人事科用餐事故統計</h1>
+<div class="setting">
+<div><label>日期</label><input type="date" id="date"></div>
+<div><label>用餐時段</label><select id="meal"><option value="中午">中午</option><option value="早上">早上</option><option value="晚上">晚上</option></select></div>
+</div>
+</div>
+
+<div class="card">
+<h2>📊 即時統計</h2>
+<div class="stats">
+<div class="stat"><div class="stat-number" id="total">22</div><div class="stat-title">應到</div></div>
+<div class="stat"><div class="stat-number" id="present">22</div><div class="stat-title">實到</div></div>
+<div class="stat"><div class="stat-number" id="accident">0</div><div class="stat-title">事故</div></div>
+</div>
+<br><div id="categoryStats"></div>
+</div>
+
+<div class="card">
+<h2>👥 人員名單</h2>
+<input class="search" type="text" id="search" placeholder="🔍 搜尋姓名..." oninput="renderPeople()">
+<div id="people"></div>
+</div>
+
+<div class="card">
+<div class="result-title">📋 回報文字</div>
+<textarea id="result" readonly></textarea>
+<button class="main-button copy" onclick="copyResult()">📋 複製回報文字</button>
+<button class="main-button reset" onclick="resetAll()">↩️ 全部清除</button>
+</div>
+</div>
+
+<script>
+const people=[
+"科長","軍人官","士人官","憲兵官","粘排","修婷","明鴻","儒欣","家豪","家緯","宇翔","科賢",
+"嘉弘","邵煬","祈翰","孟賢","煜恩","其璘","晏菱","文豪","庭瑋","脩勛"
+];
+
+const categories=["休假","洽公","戰情","現地","受訓"];
+let status={};
+people.forEach(name=>status[name]="");
+
+const today=new Date();
+document.getElementById("date").value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+
+function getROCDate(){
+ const value=document.getElementById("date").value;
+ if(!value)return "";
+ const d=new Date(value+"T00:00:00");
+ return `${d.getFullYear()-1911}年${d.getMonth()+1}月${d.getDate()}日`;
+}
+
+function renderPeople(){
+ const keyword=document.getElementById("search").value.trim();
+ const container=document.getElementById("people");
+ container.innerHTML="";
+ people.forEach(name=>{
+  if(keyword&&!name.includes(keyword))return;
+  const div=document.createElement("div");
+  div.className="person";
+  let buttons="";
+  categories.forEach(category=>{
+   const active=status[name]===category?"active":"";
+   buttons+=`<button class="${active}" onclick="setStatus('${name}','${category}')">${category}</button>`;
+  });
+  div.innerHTML=`<div class="person-name">${name}</div>
+  <div class="buttons">
+  <button class="${status[name]===""?"active":""}" onclick="setStatus('${name}','')">實到</button>
+  ${buttons}</div>`;
+  container.appendChild(div);
+ });
+}
+
+function setStatus(name,category){status[name]=category;update()}
+
+function update(){
+ const total=people.length;
+ const accident=people.filter(name=>status[name]!=="").length;
+ const present=total-accident;
+ document.getElementById("total").textContent=total;
+ document.getElementById("present").textContent=present;
+ document.getElementById("accident").textContent=accident;
+
+ let html="";
+ categories.forEach(category=>{
+  const count=people.filter(name=>status[name]===category).length;
+  html+=`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee"><span>${category}</span><b>${count}員</b></div>`;
+ });
+ document.getElementById("categoryStats").innerHTML=html;
+ renderPeople();
+ generateResult();
+}
+
+function generateResult(){
+ const date=getROCDate();
+ const meal=document.getElementById("meal").value;
+ const presentPeople=people.filter(name=>status[name]==="");
+ const accidentPeople=people.filter(name=>status[name]!=="");
+ let text=`人事科\n${date} ${meal}用餐事故彙整\n`;
+ text+=`應到：${people.length}員\n`;
+ text+=`實到：${presentPeople.length}員\n`;
+ text+=`（${presentPeople.join("、")}）\n`;
+ text+=`事故：${accidentPeople.length}員\n`;
+ categories.forEach(category=>{
+  const list=people.filter(name=>status[name]===category);
+  if(list.length)text+=`${category}${list.length}員：${list.join("、")}\n`;
+ });
+ document.getElementById("result").value=text;
+}
+
+async function copyResult(){
+ const text=document.getElementById("result").value;
+ try{await navigator.clipboard.writeText(text);alert("已複製回報文字！")}
+ catch(e){const textarea=document.getElementById("result");textarea.select();document.execCommand("copy");alert("已複製回報文字！")}
+}
+
+function resetAll(){
+ if(!confirm("確定要清除所有分類嗎？"))return;
+ people.forEach(name=>status[name]="");
+ update();
+}
+
+document.getElementById("date").addEventListener("change",generateResult);
+document.getElementById("meal").addEventListener("change",generateResult);
+update();
+</script>
+</body>
+</html>
